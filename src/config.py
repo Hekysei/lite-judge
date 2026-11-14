@@ -6,6 +6,8 @@ load_dotenv()
 
 class Settings:
     FORM_URL: str = os.getenv("FORM_URL", "")
+    FORM_LESSON_FIELD: str = os.getenv("FORM_LESSON_FIELD", "lesson")
+    FORM_TASK_FIELD: str = os.getenv("FORM_TASK_FIELD", "task")
 
     HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))

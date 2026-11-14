@@ -1,6 +1,6 @@
 import asyncio
 
-from src.cache import rebuild_lesson_page
+from src.cache import rebuild_task_page
 from src.sandbox import run_sandboxed_code
 from src.storage import (
     TESTS_CACHE,
@@ -14,10 +14,10 @@ submission_queue: asyncio.Queue[Submission] = asyncio.Queue()
 
 
 async def _update_submission(sub: Submission, status: str) -> None:
-    """Обновляет статус в памяти, сохраняет файл на диск и обновляет кэш страницы занятия."""
+    """Обновляет статус в памяти, сохраняет файл на диск и обновляет кэш страницы задания."""
     sub.status = status
     await asyncio.to_thread(save_submission_file, sub)
-    rebuild_lesson_page(sub.lesson)
+    rebuild_task_page(sub.lesson, sub.task)
 
 
 async def submit_task(student_name: str, lesson_name: str, task_code: str, code: str) -> None:

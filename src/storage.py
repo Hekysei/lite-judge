@@ -68,9 +68,12 @@ def save_submission_file(sub: Submission) -> None:
         print(f"Ошибка сохранения файла посылки {filepath.name}: {e}")
 
 
-def get_submissions_by_lesson(lesson_name: str) -> list[Submission]:
-    """Возвращает посылки для конкретного занятия из памяти (новые сверху)."""
-    subs = [s for s in SUBMISSIONS.values() if s.lesson == lesson_name]
+def get_submissions_by_task(lesson_name: str, task_code: str) -> list[Submission]:
+    """Возвращает посылки для конкретного задания из памяти (новые сверху)."""
+    subs = [
+        s for s in SUBMISSIONS.values()
+        if s.lesson == lesson_name and s.task == task_code
+    ]
     subs.sort(key=lambda s: s.id, reverse=True)
     return subs
 
