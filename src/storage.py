@@ -38,12 +38,17 @@ def _sanitize(name: str) -> str:
     return clean.strip().replace(" ", "_")
 
 
+def _normalize_name(name: str) -> str:
+    """Убирает лишние пробелы по краям и схлопывает двойные пробелы внутри ФИ."""
+    return " ".join(str(name).split())
+
+
 def create_submission(student_name: str, lesson: str, task: str, code: str) -> Submission:
     """Мгновенно выделяет уникальный ID в памяти и регистрирует посылку."""
     global _next_id
     sub = Submission(
         id=_next_id,
-        student_name=student_name,
+        student_name=_normalize_name(student_name),
         lesson=_sanitize(lesson),
         task=_sanitize(task),
         code=code,
@@ -120,13 +125,15 @@ def _load_existing_submissions() -> None:
         _next_id = 1
         return
 
-    for filepath in SUBMISSIONS_DIR.glob("*/*/*.py"):
+    collision_entries = []
+
+    for filepath in sorted(SUBMISSIONS_DIR.glob("*/*/*.py")):
         parts = filepath.stem.split("_", 1)
         if len(parts) != 2 or not parts[0].isdigit():
             continue
 
         sub_id = int(parts[0])
-        student_name = parts[1].replace("_", " ")
+        student_name = _normalize_name(parts[1].replace("_", " "))
         lesson_name = filepath.parent.parent.name
         task_name = filepath.parent.name
 
@@ -139,7 +146,7 @@ def _load_existing_submissions() -> None:
         except OSError:
             pass
 
-        SUBMISSIONS[sub_id] = Submission(
+        sub = Submission(
             id=sub_id,
             student_name=student_name,
             lesson=lesson_name,
@@ -147,7 +154,18 @@ def _load_existing_submissions() -> None:
             status=status,
         )
 
+        if sub_id not in SUBMISSIONS:
+            SUBMISSIONS[sub_id] = sub
+        else:
+            collision_entries.append(sub)
+
     _next_id = max(SUBMISSIONS.keys(), default=0) + 1
+
+    # Если на диске нашлись файлы с дублирующимися номерами, не теряем их
+    for sub in collision_entries:
+        sub.id = _next_id
+        SUBMISSIONS[_next_id] = sub
+        _next_id += 1
 
 
 def _load_lessons() -> None:
