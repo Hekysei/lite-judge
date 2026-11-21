@@ -77,6 +77,39 @@ def get_submissions_by_task(lesson_name: str, task_code: str) -> list[Submission
     subs.sort(key=lambda s: s.id, reverse=True)
     return subs
 
+def _status_priority(status: str) -> int:
+    """Определяет приоритет статуса для выбора лучшего результата."""
+    if status.startswith("✅"):
+        return 3
+    if status.startswith("⏳"):
+        return 2
+    if status.startswith("❌"):
+        return 1
+    return 0
+
+
+def get_best_results_by_lesson(lesson_name: str) -> dict[str, dict[str, str]]:
+    """
+    Возвращает словарь вида {student_name: {task_code: best_status}}
+    для указанного занятия.
+    """
+    results: dict[str, dict[str, str]] = {}
+
+    # Обходим посылки по возрастанию ID (от старых к новым)
+    lesson_subs = sorted(
+        (s for s in SUBMISSIONS.values() if s.lesson == lesson_name),
+        key=lambda s: s.id,
+    )
+
+    for sub in lesson_subs:
+        student_tasks = results.setdefault(sub.student_name, {})
+        current_best = student_tasks.get(sub.task)
+
+        # Обновляем, если посылок еще не было или новая не уступает по приоритету
+        if current_best is None or _status_priority(sub.status) >= _status_priority(current_best):
+            student_tasks[sub.task] = sub.status
+
+    return results
 
 def _load_existing_submissions() -> None:
     """Один раз при старте читает существующие посылки и вычисляет _next_id."""
