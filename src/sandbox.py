@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from src.config import settings
 
 
@@ -27,14 +28,29 @@ async def ensure_docker_image() -> None:
         print(f"Ошибка загрузки Docker-образа {settings.DOCKER_IMAGE}. Проверьте, запущен ли Docker.")
 
 
+async def _force_remove_container(container_name: str) -> None:
+    """Принудительно удаляет контейнер по имени, если он остался работать."""
+    rm_proc = await asyncio.create_subprocess_exec(
+        "docker", "rm", "-f", container_name,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await rm_proc.wait()
+
+
 async def run_sandboxed_code(
     code_str: str, stdin_data: str, timeout_sec: int = settings.DOCKER_TIMEOUT
 ) -> str:
     """Асинхронный запуск изолированного Docker-контейнера без создания временных файлов."""
+    container_name = f"sub_{uuid.uuid4().hex[:12]}"
     cmd = [
         "docker", "run", "--rm", "-i",
+        "--name", container_name,
+        "--init",
         "--net", "none",
         "--read-only",
+        "--user", "nobody",
+        "--pids-limit", "16",
         "--memory", "64m",
         "--cpus", "0.5",
         settings.DOCKER_IMAGE,
@@ -61,6 +77,7 @@ async def run_sandboxed_code(
             except ProcessLookupError:
                 pass
             await process.wait()
+            await _force_remove_container(container_name)
             return "Ошибка: Превышено время выполнения (Timeout)."
 
         if process.returncode in (124, 137):
@@ -71,4 +88,5 @@ async def run_sandboxed_code(
 
         return stdout.decode("utf-8", errors="replace")
     except Exception as e:
+        await _force_remove_container(container_name)
         return f"Внутренняя ошибка выполнения: {e}"
